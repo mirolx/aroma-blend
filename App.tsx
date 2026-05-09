@@ -1,20 +1,32 @@
+import React, { useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { useFonts } from 'expo-font';
+import { PlayfairDisplay_700Bold, PlayfairDisplay_400Regular } from '@expo-google-fonts/playfair-display';
+import * as SplashScreen from 'expo-splash-screen';
+import AppNavigator from './src/navigation/AppNavigator';
+
+SplashScreen.preventAutoHideAsync();
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Ownglyph_corncorn: require('./assets/fonts/Ownglyph_corncorn.ttf'),
+    PlayfairDisplay_700Bold,
+    PlayfairDisplay_400Regular,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) return null;
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <NavigationContainer>
+      <StatusBar style="dark" />
+      <AppNavigator />
+    </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
