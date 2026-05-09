@@ -2,10 +2,8 @@ import React, { useRef, useState } from 'react';
 import {
   View,
   StyleSheet,
-  FlatList,
   Dimensions,
   TouchableOpacity,
-  ViewToken,
   Animated,
 } from 'react-native';
 import Text from '../components/Text';
@@ -54,88 +52,78 @@ const DOT_INACTIVE = 10;
 const DOT_ACTIVE   = 24;
 
 export default function OnboardingScreen({ navigation }: Props) {
-  const [activeIndex, setActiveIndex] = useState(0);
-  const flatListRef = useRef<FlatList>(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const fadeAnim = useRef(new Animated.Value(1)).current;
 
-  // Animated width values for each dot
   const dotWidths = useRef(
     SLIDES.map((_, i) => new Animated.Value(i === 0 ? DOT_ACTIVE : DOT_INACTIVE))
   ).current;
 
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
-
-  const onViewableItemsChanged = useRef(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length === 0) return;
-      const idx = viewableItems[0].index ?? 0;
-      setActiveIndex(idx);
+  const goToSlide = (index: number) => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 150,
+      useNativeDriver: true,
+    }).start(() => {
+      setCurrentSlide(index);
       dotWidths.forEach((w, i) => {
         Animated.spring(w, {
-          toValue: i === idx ? DOT_ACTIVE : DOT_INACTIVE,
+          toValue: i === index ? DOT_ACTIVE : DOT_INACTIVE,
           damping: 14,
           stiffness: 160,
           useNativeDriver: false,
         } as any).start();
       });
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
+
+  const handleNext = () => {
+    if (currentSlide < SLIDES.length - 1) {
+      goToSlide(currentSlide + 1);
     }
-  ).current;
+  };
 
   const handleStart = async () => {
     await AsyncStorage.setItem('onboarding_completed', '1');
     navigation.replace('MoodCheck');
   };
 
-  const handleNext = () => {
-    if (activeIndex < SLIDES.length - 1) {
-      flatListRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
-    }
-  };
-
-  const isLast = activeIndex === SLIDES.length - 1;
-  const currentAccent = SLIDES[activeIndex].accent;
+  const isLast = currentSlide === SLIDES.length - 1;
+  const slide = SLIDES[currentSlide];
+  const currentAccent = slide.accent;
 
   return (
     <View style={styles.container}>
-      <FlatList
-        ref={flatListRef}
-        data={SLIDES}
-        keyExtractor={(item) => item.key}
-        horizontal
-        pagingEnabled
-        showsHorizontalScrollIndicator={false}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        renderItem={({ item }) => (
-          <View style={[styles.slide, { backgroundColor: item.bg }]}>
-            <View style={styles.slideInner}>
-              <Text style={styles.emoji}>{item.emoji}</Text>
-              <Text style={[styles.title, { color: '#2D1B5C' }]}>{item.title}</Text>
-              <View style={[styles.divider, { backgroundColor: item.accent }]} />
-              <Text style={styles.description}>{item.description}</Text>
-            </View>
-          </View>
-        )}
-      />
+      <Animated.View style={[styles.slide, { backgroundColor: slide.bg, opacity: fadeAnim }]}>
+        <View style={styles.slideInner}>
+          <Text style={styles.emoji}>{slide.emoji}</Text>
+          <Text style={[styles.title, { color: '#2D1B5C' }]}>{slide.title}</Text>
+          <View style={[styles.divider, { backgroundColor: slide.accent }]} />
+          <Text style={styles.description}>{slide.description}</Text>
+        </View>
+      </Animated.View>
 
-      {/* Footer: dots + button */}
       <View style={styles.footer}>
-        {/* Page indicator dots */}
         <View style={styles.dots}>
-          {SLIDES.map((slide, i) => (
+          {SLIDES.map((_, i) => (
             <Animated.View
               key={i}
               style={[
                 styles.dot,
                 {
                   width: dotWidths[i],
-                  backgroundColor: i === activeIndex ? currentAccent : '#DDD6EC',
+                  backgroundColor: i === currentSlide ? currentAccent : '#DDD6EC',
                 },
               ]}
             />
           ))}
         </View>
 
-        {/* Action button */}
         {isLast ? (
           <TouchableOpacity onPress={handleStart} activeOpacity={0.85} style={styles.btnWrapper}>
             <LinearGradient
